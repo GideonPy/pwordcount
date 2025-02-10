@@ -1,0 +1,4 @@
+pwordcount
+*.o
+*.out
+*.swp
