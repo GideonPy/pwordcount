@@ -1,0 +1,22 @@
+#include "pwordcount.h"
+
+int check_file(const char *filename) {
+  FILE *file = fopen(filename, "r");
+  if (file == NULL) {
+    printf("Error: Cannot open file '%s'.\n", filname);
+    return 0; // file not found
+  }
+  fclose(file);
+  return 1; // file exsists
+}
+
+void load_file(const char *filename) {
+  FILE *file = fopen(filename, "r");
+  if (file == NULL) {
+    printf("Error: Cannot open file '%s',\n", filename);
+    return;
+  }
+  printf("file '%s' loaded successfully.\n", filename);
+  fclose(file);
+}
+		   
