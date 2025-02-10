@@ -1,17 +1,39 @@
 #include "pwordcount.h"
 #include <errno.h> // error handling
 
-#define BUFFER_SIZE 1024 // Buffer for reading file 
+#define BUFFER_SIZE 1024 // Buffer for reading file
 
-int check_file(const char *filename) {
-  FILE *file = fopen(filename, "r");
-  if (file == NULL) {
+void get_filename(char *filename) {
+  printf("Enter a new file name (or type 'exit' to quit): ");
+  scanf("%s", filename);
+}
+
+int check_file(char *filename) {
+  FILE *file;
+
+  while (1) {
+    file = fopen(filename, "r");
+    if(file != NULL) {
+      fclose(file);
+      return 1; // File exists and can be opened
+    }
+
     printf("Error: Cannot open file '%s'.\n", filename);
-    perror("Error opening file"); //Detailed error message
-    return 0; // file not found
+    perror("System Error");
+
+    // Ask user for a new file or exit
+    printf("Would you like to enter a different file? (y/n): ");
+    char choice;
+    scanf(" %c", &choice);
+
+    if (choice == 'n' || choice == 'N') {
+      printf("Exiting program...\n");
+      exit(1);
+    }
+
+    // Get a new filename from user
+    get_filename(filename);
   }
-  fclose(file);
-  return 1; // file exsists
 }
 
 // Function to get file size

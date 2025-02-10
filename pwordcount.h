@@ -14,7 +14,7 @@
 
 
 // Functions
-int check_file(const char *filename);
+int check_file(char *filename);
 long get_file_size(const char *filename);
 void load_file(const char *filename);
 void create_process(const char *filename);
