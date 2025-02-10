@@ -14,6 +14,16 @@ int check_file(const char *filename) {
   return 1; // file exsists
 }
 
+// Function to get file size
+long get_file_size(const char *filename) {
+  struct stat st;
+  if (stat(filename, &st) == 0) {
+    return st.st_size;
+  }
+  perror("Error getting file size");
+  return -1;
+}
+
 //Function to count words in a given string
 int count_words(const char *text) {
   int count = 0;
@@ -42,68 +52,95 @@ void load_file(const char *filename) {
 }
 
 void create_process(const char *filename) {
-  int pipe1[2]; // Pipe for sending file content to child
-  int pipe2[2]; // Pipe for sending word count back to parent
-  pid_t pid;
-  char buffer[BUFFER_SIZE];
+  long file_size = get_file_size(filename);
+  if (file_size < 0) {
+    printf("Error: Unable to determine file size.\n");
+    return;
+  }
+
+  //Determine number of child processes
+  int num_processes = 1;
+  if (file_size > LARGE_FILE_SIZE) {
+    num_processes = 2; // Increase processes for large files.
+  }
+
+  printf("File Size: %ld bytes. Using %d child process(es).\n", file_size, num_processes);
+
+  int fd1[2], fd2[2]; // Pipes
+  pid_t pids[num_processes];
 
   // Create pipes
-  if (pipe(pipe1) == -1 || pipe(pipe2) == -1) {
+  if (pipe(fd1) == -1 || pipe(fd2) == -1) {
     perror("Pipe failed");
     exit(1);
   }
 
-  // Fork child process
-  pid = fork();
-  if (pid < 0) {
-    perror("Fork failed");
-    exit(1);
-  }
-
-  if (pid > 0) {
-    //Parent process: Reads and sends data through the pipe
-    close(pipe1[0]); // Close unused read end of pipe1
-    close(pipe2[1]); // Close write end of pipe2
-
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-      perror("Error openinig file");
+  // Fork multiple child processes
+  for (int i = 0; i < num_processes; i++) {
+    if ((pids[i] = fork()) < 0) {
+      perror("Fork failed");
       exit(1);
     }
 
-    printf("Parent: Reading file and sending data to child...\n");
-    while (fgets(buffer,BUFFER_SIZE, file) != NULL) {
-      write(pipe1[1], buffer, strlen(buffer)); // write to pipe1
+    if (pids[i] == 0) { // child process
+      close(fd1[1]); // Close write end of input pipe
+      close(fd2[0]); // Close read end of output pipe
+
+      char buffer[1024];
+      int total_words = 0;
+
+      //Read data from parent
+      ssize_t bytesRead;
+      while (( bytesRead = read(fd1[0], buffer, sizeof(buffer) - 1)) > 0) {
+	buffer[bytesRead] = '\0';
+	total_words += count_words(buffer);
+      }
+
+      close(fd1[0]); // Close input pipe after reading
+
+      printf("Child %d: Counted %d words.\n", getpid(), total_words);
+
+      // Send word count back to parent
+      write(fd2[1], &total_words, sizeof(int));
+      close(fd2[1]);
+
+      exit(0);
     }
-
-    fclose(file);
-    close(pipe1[1]); // Close write end after writing
-
-    // Read word count result from child through pipe2
-    int word_count;
-    read(pipe2[0], &word_count, sizeof(word_count));
-    printf("Parent: The total number of words is %d.\n", word_count);
-    close(pipe2[0]); // Close read endo of pipe2
-  }else {
-    // Child proces: Reads data from the pipe, counts , and sends data back to parent
-    close(pipe1[1]); // Close  write end of pipe1
-    close(pipe2[0]); // Close read end of pipe2
-
-    ssize_t bytesRead;
-    int total_words= 0;
-    
-    printf("Child: Receiving file content from parent and counting words...\n");
-    while ((bytesRead = read(pipe1[0], buffer, BUFFER_SIZE -1)) > 0) {
-      buffer[bytesRead] = '\0'; // Null-terminate string
-      total_words += count_words(buffer); // Count words in chunk
-    }
-
-    close(pipe1[0]); // Close read end after reading
-
-    // Send word count back to parent
-    write(pipe2[1], &total_words, sizeof(total_words));
-    close(pipe2[1]); // Close write end after writing
   }
+
+  // Parent process: Read file and distrubute data
+  close(fd1[0]); // Close read end of input pipe
+  close(fd2[1]); // Close write end of output pipe
+
+  FILE *file = fopen(filename,"r");
+  if (file == NULL) {
+    perror("Error opening file");
+    exit(1);
+  }
+
+  char buffer[1024];
+  while(fgets(buffer, sizeof(buffer), file) != NULL) {
+    write(fd1[1], buffer, strlen(buffer));
+  }
+
+  fclose(file);
+  close(fd1[1]); // Close write end after writing
+
+  // Collect word counts from children
+  int total_word_count = 0, child_word_count;
+  for (int i = 0; i < num_processes; i++) {
+    read(fd2[0], &child_word_count, sizeof(int));
+
+    // debug information
+    printf("Parent: Received %d words from child %d\n", child_word_count, pids[i]);
+    
+    total_word_count += child_word_count;
+  }
+
+  close(fd2[0]); // Close read end of output pipe
+
+  // Print final word count
+  printf("Total word count: %d\n", total_word_count);
 }
-	    
+
 			      
