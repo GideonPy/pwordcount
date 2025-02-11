@@ -19,11 +19,12 @@
 
 // Functions
 int check_file(char *filename);
-long get_file_size(const char *filename);
-void load_file(const char *filename);
-void create_process(const char *filename, int use_multiple_cores);
-int count_words(const char *text);
+long get_file_size(const char *filename);// Checks file size
+void load_file(const char *filename); 
+void create_process(const char *filename, int use_multiple_cores, int num_children);//
+int count_words(const char *text);// Count word function
 int get_user_choice(); // User function to get core choice.
+int get_child_count(); // User function to get # of children processes
 void log_result(const char *filename, int word_count, double exec_time, int num_processes);
 
 #endif

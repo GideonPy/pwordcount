@@ -1,3 +1,8 @@
 File: large_file.txt | Word Count: 1000643 | Execution Time: 3.39371 sec | Processes: 1
 File: input.txt | Word Count: 5 | Execution Time: 0.00076 sec | Processes: 1
 File: large_file.txt | Word Count: 1000645 | Execution Time: 3.50977 sec | Processes: 1
+File: large_file.txt | Word Count: 1000620 | Execution Time: 5.65867 sec | Processes: 1
+File: large_file.txt | Word Count: 1000647 | Execution Time: 5.45971 sec | Processes: 1
+File: large_file.txt | Word Count: 1000653 | Execution Time: 1.79589 sec | Processes: 3
+File: large_file.txt | Word Count: 1000644 | Execution Time: 1.75200 sec | Processes: 4
+File: large_file.txt | Word Count: 1000657 | Execution Time: 1.62796 sec | Processes: 1

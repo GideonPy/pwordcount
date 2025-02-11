@@ -36,11 +36,11 @@ int check_file(char *filename) {
   }
 }
 
-// Function for user choice
+// Function for user mode choice
 int get_user_choice() {
   int choice;
   printf("Choose processing mode:\n");
-  printf("1 - Single-core mode (1 child process)\n");
+  printf("1 - Single-core mode\n");
   printf("2 - Multi-core mode (Use all available cores)\n");
   printf("Enter your choice (1 or 2): ");
   scanf("%d", &choice);
@@ -50,6 +50,18 @@ int get_user_choice() {
     scanf("%d", &choice);
   }
   return choice;
+}
+// Function to get child count
+int get_child_count() {
+  int num_children;
+  printf("Enter the number of child processes to create in Single-Core Mode: ");
+  scanf("%d", &num_children);
+
+  while (num_children < 1) {
+    printf("Invalid number. Please enter a positive integer: ");
+    scanf("%d", &num_children);
+  }
+  return num_children;
 }
 
 // Function to get file size
@@ -89,7 +101,7 @@ void load_file(const char *filename) {
   fclose(file);
 }
 
-void create_process(const char *filename, int use_multiple_cores) {
+void create_process(const char *filename, int use_multiple_cores, int num_children) {
   struct timespec start, end;
   clock_gettime(CLOCK_MONOTONIC, &start); // Start timing
   
@@ -101,7 +113,7 @@ void create_process(const char *filename, int use_multiple_cores) {
 
   //Determine number of child processes based on user choice
   int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
-  int num_processes = use_multiple_cores ? num_cores : 1;
+  int num_processes = use_multiple_cores ? num_cores : num_children;
 
   printf("File Size: %ld bytes. Detected %d cores. Using %d child process(es).\n", file_size, num_cores, num_processes);
 
@@ -182,7 +194,7 @@ void create_process(const char *filename, int use_multiple_cores) {
   clock_gettime(CLOCK_MONOTONIC, &end);
   double exec_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-  // Print final word count
+  // Print final word count and execution time
   printf("Total word count: %d\n", total_word_count);
   printf("Execution Time: %.5f seconds\n", exec_time);
 
@@ -190,6 +202,7 @@ void create_process(const char *filename, int use_multiple_cores) {
   log_result(filename, total_word_count, exec_time, num_processes);  
 }
 
+//Function to log results
 void log_result(const char *filename, int word_count, double exec_time, int num_processes) {
   FILE *log_file = fopen(LOG_FILE, "a"); // Open in addend mode
   if (log_file == NULL) {
