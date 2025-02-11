@@ -36,6 +36,22 @@ int check_file(char *filename) {
   }
 }
 
+// Function for user choice
+int get_user_choice() {
+  int choice;
+  printf("Choose processing mode:\n");
+  printf("1 - Single-core mode (1 child process)\n");
+  printf("2 - Multi-core mode (Use all available cores)\n");
+  printf("Enter your choice (1 or 2): ");
+  scanf("%d", &choice);
+
+  while (choice != 1 && choice != 2) {
+    printf("Invalid choice. Please enter 1 for single-core or 2 for multi-core: ");
+    scanf("%d", &choice);
+  }
+  return choice;
+}
+
 // Function to get file size
 long get_file_size(const char *filename) {
   struct stat st;
@@ -73,22 +89,23 @@ void load_file(const char *filename) {
   fclose(file);
 }
 
-void create_process(const char *filename) {
+void create_process(const char *filename, int use_multiple_cores) {
+  struct timespec start, end;
+  clock_gettime(CLOCK_MONOTONIC, &start); // Start timing
+  
   long file_size = get_file_size(filename);
   if (file_size < 0) {
     printf("Error: Unable to determine file size.\n");
     return;
   }
 
-  //Determine number of child processes
-  int num_processes = 1;
-  if (file_size > LARGE_FILE_SIZE) {
-    num_processes = 2; // Increase processes for large files.
-  }
+  //Determine number of child processes based on user choice
+  int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+  int num_processes = use_multiple_cores ? num_cores : 1;
 
-  printf("File Size: %ld bytes. Using %d child process(es).\n", file_size, num_processes);
+  printf("File Size: %ld bytes. Detected %d cores. Using %d child process(es).\n", file_size, num_cores, num_processes);
 
-  int fd1[2], fd2[2]; // Pipes
+  int fd1[2], fd2[2]; // Pipes for communication
   pid_t pids[num_processes];
 
   // Create pipes
@@ -104,7 +121,7 @@ void create_process(const char *filename) {
       exit(1);
     }
 
-    if (pids[i] == 0) { // child process
+    if (pids[i] == 0) { // Child process
       close(fd1[1]); // Close write end of input pipe
       close(fd2[0]); // Close read end of output pipe
 
@@ -161,8 +178,28 @@ void create_process(const char *filename) {
 
   close(fd2[0]); // Close read end of output pipe
 
+  //Measure execution time
+  clock_gettime(CLOCK_MONOTONIC, &end);
+  double exec_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+
   // Print final word count
   printf("Total word count: %d\n", total_word_count);
+  printf("Execution Time: %.5f seconds\n", exec_time);
+
+  // Log result to file
+  log_result(filename, total_word_count, exec_time, num_processes);  
 }
 
+void log_result(const char *filename, int word_count, double exec_time, int num_processes) {
+  FILE *log_file = fopen(LOG_FILE, "a"); // Open in addend mode
+  if (log_file == NULL) {
+    perror("Error opening log file");
+    return;
+  }
+
+  fprintf(log_file, "File: %s | Word Count: %d | Execution Time: %.5f sec | Processes: %d\n",
+	  filename, word_count, exec_time, num_processes);
+
+  fclose(log_file);
+}
 			      
